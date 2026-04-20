@@ -20,7 +20,7 @@ This tutorial series is designed to showcase the Agents SDK and the Broadcast fe
 
 ### [Intro - What We're Building](./tutorial/intro.md)
 
-### Part 1 - Setting Up Hermes Agent and OpenRouter for Agentic Coding
+### [Part 1 - Setting Up Hermes Agent and OpenRouter for Agentic Coding](./tutorial/part-1.md)
 
 ### Part 2 - Building a State Capitol Tracker with the OpenRouter Agent SDK
 
