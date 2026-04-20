@@ -48,7 +48,7 @@ OpenRouter already has solid reference content in place. The biggest opportunity
 
 Tutorials are great foundational pieces for teaching people what they can build with OpenRouter, how, and why, from start to finish. Tutorials will often contain educational content on multiple different components and features of OpenRouter.
 
-I like to organize these around product features, so let's take the video generation as an example.
+I like to organize How-to Guides around product feature releases, so let's take the video generation as an example.
 
 You have the [feature page on the docs](https://openrouter.ai/docs/guides/overview/multimodal/video-generation), I would count that as a reference.
 
