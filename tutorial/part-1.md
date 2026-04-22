@@ -1,16 +1,16 @@
 # Part 1: Setting Up Hermes Agent and OpenRouter for Agentic Coding
 
-We're going to get started by setting up our development environment using Hermes and OpenRouter.
+We're going to get started by setting up our development environment using [Hermes](https://hermes-agent.nousresearch.com/) and [OpenRouter](https://openrouter.ai).
 
-Why are we using Hermes and OpenRouter? Hermes is an AI agent conceptually similar to OpenClaw but with some key differences. It has solid built-in memory, tool use, skills, custom profiles, and a self-learning skills system. That last part is one of the most powerful parts of Hermes and one of the reasons it works so well as a coding agent.
+Why are we using Hermes and OpenRouter? Hermes is an AI agent conceptually similar to OpenClaw but with some key differences. It has solid built-in memory, tool use, custom profiles, and a self-learning skills system. That last part is one of the most powerful parts of Hermes and one of the reasons it works so well as a coding agent.
 
 If you haven't tried Hermes for coding yet, follow this tutorial to get it up and running. Because of features like its built-in memory and self-improving skills system it is a very powerful coding tool.
 
 It learns how you work and improves the more you use it.
 
-Hermes also works with OpenRouter out of the box. This is great because you can easily switch between models whenever you like with a single config change. If you use OpenRouter, you can use whatever model you want and switch to it in about 15 seconds.
+Hermes also works with OpenRouter out of the box. This is great because you can easily switch between models whenever you like with a single config change. If you use OpenRouter, you can use whatever model you want and switch to it in seconds.
 
-As of the time of this writing, Kimi K2.6 has just been released so we'll be testing that out by building our capitol tracker inside Hermes using Kimi 2.6.
+As of the time of this writing (April 20, 2026), Kimi K2.6 has just been released so we'll be testing that out by building our capitol tracker inside Hermes using Kimi K2.6.
 
 By the end of this lesson, you will have:
 
@@ -35,19 +35,15 @@ If you have not created an OpenRouter account yet, do that first at [openrouter.
 
 ## Why this setup is a good combo
 
-As we touched on above, Hermes is built as a provider-agnostic agent framework rather than a single-provider coding harness. It combines terminal tool use with longer-lived capabilities like self-improving skills and memory. This makes it really efficient and enjoyable to use over the long term since it actually improves over time rather than needing new conext every time you start it up.
-
-OpenRouter is a strong match for that philosophy. Hermes is designed to work across providers, and OpenRouter gives you one API and one key across hundreds of models and providers.
+As we touched on above, Hermes is built as a provider-agnostic agent framework rather than a single-provider coding harness. It combines terminal tool use with longer-lived capabilities like self-improving skills and memory. This makes it really efficient and enjoyable to use over the long term since it actually improves over time rather than needing new context every time you start it up.
 
 So Hermes gives us an agent environment we can keep using as the project becomes more capable, and OpenRouter gives us a model layer we can swap and improve without tearing everything else apart.
 
 We get this flexibility both inside our coding agent itself (because we are integrating Hermes with OpenRouter) and in our product because we are going to be building it with the OpenRouter Agent SDK (more on this in the next part of the tutorial).
 
-So both our coding agent and our project will benefit from model flexibility and provider optionality.
-
 That gives us several benefits out of the box:
 
-- **Try new models instantly.** When a better coding model drops, you can switch to it without changing your agent setup or rewriting any client code.
+- **Try new models instantly.** When a new coding model drops, you can switch to it without changing your agent setup or rewriting any client code.
 - **Route around downtime automatically.** If one provider is overloaded or down, OpenRouter can fall back to another serving the same model.
 - **One API, one key.** No need to manage separate accounts and credentials for every provider you want to use.
 - **Consolidated billing.** All your usage across every model and provider shows up in one place.
@@ -62,7 +58,7 @@ That will walk you through getting Hermes set up and setting Kimi K2.6 via OpenR
 
 After you get it installed, you can run through the setup process with `hermes setup` to go through the full setup process and set Hermes up with messaging access. During that process you'll have a chance to select OpenRouter as your provider, provide your API key, and select your model.
 
-You can also just run `hermes model` if you only want to set up the provider and model or if you alraedy have Hermes set up on your machine.
+You can also just run `hermes model` if you only want to set up the provider and model or if you already have Hermes set up on your machine.
 
 ![Model selection](select-model.png)
 
@@ -72,7 +68,7 @@ If the model you want to use (Kimi K2.6 in our case) is not in the predefined li
 
 ## Step 2: Teach Hermes to be an OpenRouter expert
 
-Now we are going to give Hermes a focused knowledge injection. The goal is to turn it into an expert on OpenRouter and the Agent SDK so that when we start building in Part 2, Hermes is working from solid documentation rather than guessing at APIs.
+Now we are going to give Hermes a focused knowledge injection. The goal is to turn it into an expert on OpenRouter and the Agent SDK so that when we start building in Part 2, Hermes is working from solid documentation rather than guessing at APIs. This will save you and Hermes a lot of tokens and a lot of time iterating back and forth on implementation details.
 
 Inside Hermes, paste the following prompt. Feel free to customize this to your liking:
 
@@ -131,9 +127,9 @@ Alright now let's put it to the test by building our project in Hermes.
 
 ## Step 3: Planning our capitol tracker
 
-Everyone has their own preferences and processes when it comes to agentic coding. For this tutorial, we are going to lean on being iterative and figuring out exactly how we want to build our project as we go. We'll start with a brief planning/research session without going overboard and trying to overplan every single piece of our project.
+Everyone has their own preferences when it comes to agentic coding. For this tutorial, we'll start by having our agent build a working first version quickly, then we'll review the code together using a set of checkpoints so you understand how each piece works and can verify your implementation against known-good patterns.
 
-I'm going to kick things off with this prompt in a new Hermes session, feel free to use this or create your own to get started. For context, I've already created a new directory called `capitol-tracker` and am working inside that folder.
+I'm going to kick things off with this prompt in a new Hermes session, feel free to use this or create your own to get started. By default, Hermes has its own internal `projects` folder it uses to work on new projects. You can either work from there or instruct it to work out of another folder directly.
 
 ```markdown
 i want to create a new project called capitol tracker. capitol tracker is meant to be an agentic tracker for state legislature's. i want to start by doing a light brainstorming/planning session so i can figure out what i want it to look like and how it will work, so far i know i want to build the core architecture with openrouter's typescript sdk and the callmodel primitive
@@ -147,7 +143,7 @@ After some back and forth with Hermes, here is the starting point I have for Cap
 
 The Capitol Tracker MVP will be a CLI built with the OpenStates API for getting the legislature data and the OpenRouter TypeScript SDK for building the actual agent functionality.
 
-It will kick off with a simple `npx capitol-tracker digest` command which will first prompt some setup if the suer hans't done that yet, API keys, desired state, interests, etc. Then it will pull a digest of the bills introduced the previous day with a summary. From there it will drop into an interactive session where the user can dig more deeply into any of the bills using a research tool we'll build with OpenRouter's `callModel` primitive.
+It will kick off with a simple `npx capitol-tracker digest` command which will first prompt some setup if the user hasn't done that yet, API keys, desired state, interests, etc. Then it will pull a digest of the bills introduced the previous day with a summary. From there it will drop into an interactive session where the user can dig more deeply into any of the bills using a research tool we'll build with OpenRouter's `callModel` primitive.
 
 ## What you have now
 
