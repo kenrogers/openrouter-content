@@ -59,12 +59,13 @@ Building the same agentic functionality we are building here with the core SDK w
 Here's a simple example of `callModel`. Don't worry about memorizing any of this syntax, the goal here is to get familiar with how `callModel` works enough to be able to intelligently direct a coding agent to build things with it.
 
 ```typescript
-import { OpenRouter } from '@openrouter/sdk';
-import { callModel, stepCountIs } from '@openrouter/agent';
+import { OpenRouter, stepCountIs } from '@openrouter/agent';
 
-const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
-const result = callModel(client, {
+const result = openrouter.callModel({
     model: 'openai/gpt-4o',
     input: 'What bills were introduced in Colorado this week?',
     tools: [searchBillsTool, getBillDetailsTool],
@@ -79,7 +80,7 @@ Even though we are only calling the `callModel` function once here, that single 
 Two fields you will use constantly:
 
 - **`instructions`** — the system prompt. Use it for personality, rules, and context that should apply to every turn.
-- **`input`** — the user message or task. It can be a plain string or an `Item[]` array (we will use the array form later for state persistence).
+- **`input`** — the user message or task. It can be a plain string or a message array. The docs show the shorthand `{ role: 'user', content: '...' }` form; we will use the explicit `Item` form (with `type: 'message'`) later when we add state persistence because it formats more reliably alongside loaded conversation history.
 
 One of the biggest benefits of using the OpenRouter Agent SDK is that you get the `ModelResult` multi-consumption pattern.
 
@@ -93,10 +94,13 @@ So we can do any/all of the following at the same time from our `result` from th
 const response = await result.getResponse();            // full response + usage
 for await (const d of result.getTextStream()) { }       // stream text deltas
 for await (const d of result.getReasoningStream()) { }  // stream reasoning deltas
+for await (const item of result.getItemsStream()) { }   // stream complete items (docs-recommended)
 for await (const e of result.getToolStream()) { }       // tool execution events
 for await (const c of result.getToolCallsStream()) { }  // structured tool calls
 const calls = await result.getToolCalls();              // all tool calls after completion
 ```
+
+`getItemsStream()` is the approach the docs recommend when you need structured access to everything the model produces — messages, tool calls, reasoning, and tool results — as complete items rather than raw text deltas.
 
 This means you can add consumers to the same result without coordinating them or managing stream branches yourself. For Capitol Tracker, we can stream the human-readable summary to the terminal, log every tool execution event for debugging, and check the total cost across all turns — all from the same callModel result:
 
