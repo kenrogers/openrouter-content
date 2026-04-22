@@ -132,7 +132,7 @@ Everyone has their own preferences when it comes to agentic coding. For this tut
 I'm going to kick things off with this prompt in a new Hermes session, feel free to use this or create your own to get started. By default, Hermes has its own internal `projects` folder it uses to work on new projects. You can either work from there or instruct it to work out of another folder directly.
 
 ```markdown
-i want to create a new project called capitol tracker. capitol tracker is meant to be an agentic tracker for state legislature's. i want to start by doing a light brainstorming/planning session so i can figure out what i want it to look like and how it will work, so far i know i want to build the core architecture with openrouter's typescript sdk and the callmodel primitive
+i want to create a new project called capitol tracker. capitol tracker is meant to be an agentic tracker for state legislatures. i want to start by doing a light brainstorming/planning session so i can figure out what i want it to look like and how it will work, so far i know i want to build the core architecture with openrouter's agent sdk and the callmodel primitive
 ```
 
 After I hit enter, Hermes immediately pulled up the skill it created and kicked off a brainstorming session with a few questions and suggestions.
@@ -144,6 +144,8 @@ After some back and forth with Hermes, here is the starting point I have for Cap
 The Capitol Tracker MVP will be a CLI built with the OpenStates API for getting the legislature data and the OpenRouter TypeScript SDK for building the actual agent functionality.
 
 It will kick off with a simple `npx capitol-tracker digest` command which will first prompt some setup if the user hasn't done that yet, API keys, desired state, interests, etc. Then it will pull a digest of the bills introduced the previous day with a summary. From there it will drop into an interactive session where the user can dig more deeply into any of the bills using a research tool we'll build with OpenRouter's `callModel` primitive.
+
+Your agent might produce a different structure — maybe it puts everything in one file, uses classes instead of factory functions, or names things differently. That is fine. In Part 2 we will review the code using pattern-based checkpoints, not file-by-file comparisons. The goal is to understand why each piece works, not to make your files match mine exactly.
 
 ## What you have now
 
