@@ -16,9 +16,29 @@ Before we do that, let's take a quick detour to talk about the OpenRouter SDK an
 
 ## Call Model
 
-OpenRouter's `callModel` primitive is a single function that wraps the OpenRouter Responses API. It lives in the `@openrouter/agent` package and is designed for building agents end-to-end. So it isn't just a chat completion wrapper. It is an agent primitive.
+Before we dive into the SDK, let's make sure we're on the same page about what an agent loop actually is. If you've never built an agent before, this section is for you. If you have, skim it to confirm our vocabulary lines up.
 
-Side note: Remember we set up Hermes to use that custom skill, which means at any point you can simply ask it any questions you might have about how `callModel` works. Learning how to effectively train an agent and then learn from it is one of the most valuable skills you can have as an AI-powered builder.
+### What is an agent loop?
+
+A normal API call to an LLM looks like this: you send a prompt, the model sends back text, and you're done. An *agent* is different. An agent is a loop where the model can ask your code to do things on its behalf, then continue the conversation once it gets the answer.
+
+Here is the simplest version of that loop:
+
+1. **You send a request** with a task ("summarize these bills") and a list of available tools ("search_bills", "get_bill_details").
+2. **The model responds.** It might answer directly, or it might say "I need more info — call `get_bill_details` for HB 1250."
+3. **Your code runs the tool.** You execute the function the model asked for and get back a result.
+4. **You send the result back to the model.** The model sees the tool output and can either answer now or ask for another tool call.
+5. **Repeat until the model is done.** The loop stops when the model produces a final answer, a safety cap is hit, or an error occurs.
+
+That is the whole idea. The model is the decision-maker. Your code is the executor. The SDK (in our case, `callModel`) is the orchestrator that handles the back-and-forth so you don't have to write the loop yourself.
+
+Two concepts show up constantly when building agents:
+
+- **Tool calling.** The model doesn't call your functions directly. It emits a structured request (a "tool call") with a name and arguments. The SDK hands that request to your `execute` function, then packages the return value and feeds it back to the model. Your job is to write the `execute` functions; the SDK handles the protocol.
+
+- **State / persistence.** In a single-turn API call, the conversation is stateless — you send one prompt, you get one response. In an agent loop, the conversation is *stateful* because each turn depends on what happened in previous turns. "State" is the accumulated history of messages, tool calls, and results. If you save it between program runs, the user can ask a follow-up question tomorrow and the model will remember what you talked about today.
+
+That is all the theory you need. The rest of this lesson is implementation.
 
 ### OpenRouter SDK vs Agent SDK
 
