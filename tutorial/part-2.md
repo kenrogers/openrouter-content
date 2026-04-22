@@ -206,7 +206,7 @@ What I ran
 - Verified env vars are present
 - Built the project — compiles clean
 - Ran fetch — pulls 20 recent Colorado bills from OpenStates
-- Ran a targeted digest smoke test with 3 bills via the OpenRouter agent SDK — agent loop completes and returns analysis
+- Ran a targeted digest smoke test with 3 bills via the OpenRouter agent SDK — agent loop completes and streams the analysis
 
 Bugs found & fixed during the test
 
@@ -428,30 +428,22 @@ const result = callModel(client, {
     `Here are the recently updated bills for ${profile.state}:\n\n` +
     stubs.map((b) => `- ${b.identifier}: ${b.title} ...`).join("\n") +
     `\n\nReview these bills. For any that seem highly relevant, call get_bill_details ...`,
-  tools: [billTool],  // readonly tuple — required for type narrowing
+  tools: [billTool],
   stopWhen: stepCountIs(10),   // safety cap
 });
 
-const text = await result.getText();
+let text = "";
+for await (const delta of result.getTextStream()) {
+  text += delta;
+  process.stdout.write(delta);
+}
+process.stdout.write("\n");
 return text;
 ```
 
 **Pattern to notice:** `tools: [billTool]` creates a readonly tuple. The SDK infers tool types from the array, so `stopWhen` conditions and `getToolCalls()` results are precisely typed. If your agent omitted the tuple and you're seeing type errors around tool names, make sure the array is passed directly as a literal.
 
-**Pattern to notice:** `const text = await result.getText()`. This blocks until the multi-turn agent loop completes and returns the final prose digest. The `await` is explicit so errors bubble cleanly into the caller. If your agent wrapped this in a `try/catch` that swallows the error and returns a string, change it — swallowed errors make it impossible for the CLI to distinguish success from failure programmatically.
-
-**Better UX:** In a real CLI, streaming the digest as it is written is a nicer experience than a blank screen for 30 seconds. You can swap `getText()` for `getTextStream()` with a few extra lines:
-
-```typescript
-let text = "";
-for await (const delta of result.getTextStream()) {
-  text += delta;
-  process.stdout.write(delta);  // print as it arrives
-}
-return text;
-```
-
-We use `getText()` in the tutorial to keep the code minimal, but in your own tool you should absolutely stream the output.
+**Pattern to notice:** `getTextStream()` yields text deltas as the model generates them. We accumulate them into `text` (so the caller still gets the full string) and write each delta to `process.stdout` so the user sees output in real time instead of a blank screen for 30 seconds. The trailing `process.stdout.write("\n")` ensures the terminal prompt lands on a fresh line after the stream ends.
 
 **Pattern to notice:** `stopWhen: stepCountIs(10)`. The `callModel` loop executes once per "turn" (one model response + any tool calls it triggers). A cap of 10 turns is plenty for a digest that reviews 10-20 bill stubs; 20 is overkill and risks burning tokens on a runaway loop.
 
@@ -526,11 +518,14 @@ const result = callModel(client, {
   state,  // <-- messages accumulate automatically across runs
 });
 
-const text = await result.getText();
+let text = "";
+for await (const delta of result.getTextStream()) {
+  text += delta;
+  process.stdout.write(delta);
+}
+process.stdout.write("\n");
 return text;
 ```
-
-The chat agent also works with `getText()`, but in a real interactive CLI you would stream the response with `getTextStream()` so the user sees text appear as the model generates it. See the "Better UX" note in Checkpoint 4 above for the swap.
 
 **Critical detail:** When `state` is provided, the SDK appends each turn's input and response to the state's message history automatically via `state.save()`. The next time you run `callModel` with the same `state`, `state.load()` returns the full conversation including all prior tool calls and responses. This is how follow-up questions like "tell me more about SB 70" work — the model sees the previous digest and the user's prior questions.
 
@@ -615,7 +610,7 @@ Now let's try running the digest.
 npx tsx src/cli/index.ts digest 1
 ```
 
-**Note on timing:** This command may take 30-60 seconds to produce output. The terminal will appear completely silent while the model internally calls `get_bill_details` for the bills it deems relevant. That silence is normal — the SDK's `getText()` blocks until the entire multi-turn loop completes. If you want to see real-time progress, you can add a `getToolStream()` consumer to log each tool execution.
+**Note on timing:** This command may take 30-60 seconds to complete. You will see the digest stream to the terminal in real time as the model generates it. The model may internally call `get_bill_details` for bills it deems relevant — those tool calls happen behind the scenes and do not produce visible output unless you add a `getToolStream()` consumer. If you want to see real-time progress of tool executions, you can add a `getToolStream()` consumer to log each tool call.
 
 Here's what I got:
 
