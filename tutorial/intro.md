@@ -9,10 +9,16 @@ I live in Colorado, so I'll be building a tracker for the Colorado state legisla
 We will build one coherent application across three parts, and each part will introduce a new layer of the stack while keeping the rest intact.
 
 - In Part 1, you will set up an agentic coding environment with Hermes Agent and OpenRouter.
-- In Part 2, you will build the State Capitol Tracker using the OpenRouter Agent SDK.
+- In Part 2, you will build the State Capitol Tracker using the OpenRouter Agent SDK (`@openrouter/agent`).
 - In Part 3, you will add observability, evaluation, and cost tracking with Langfuse and OpenRouter Broadcast.
 
-The goal is not just to show you how each tool works in isolation, but to show you how they work together, and why that matters when you're building real apps.
+The goal is not just to show you how each tool works in isolation, but to show you how they work together, and why that matters when you're building real apps with agents.
+
+## How to use this tutorial
+
+This is a **process-oriented tutorial**, not a copy-paste one. In Parts 1 and 2, you will be coding with an AI agent (Hermes), which means the exact code you produce will differ from mine. That is expected and desirable. What you are learning is how to direct an agent, evaluate its output, and iterate until you have valid architecture.
+
+I have a complete reference implementation at [github.com/kenrogers/capitol-tracker](https://github.com/kenrogers/capitol-tracker). You can clone it if you want to compare against working code, or if your agent gets stuck and you need a reset point. But the goal is not to reproduce my code — it is to learn the prompt sequences, decision frameworks, and validation checkpoints that produce a solid result.
 
 ## Why this stack
 
@@ -24,9 +30,9 @@ OpenRouter solves that by giving you one API across hundreds of models and provi
 
 In addition to the architecture behind the agent product we are building, we also want a solid foundation in which to do the building itself.
 
-If you've been keeping up with AI, you will almost certainly have heard of OpenClaw. But another AI agent tool is rapidly growing in popularity, and it also happens to make a fantastic developer tool: [Hermes](https://hermes-agent.nousresearch.com/).
+If you've been keeping up with AI, you will almost certainly have heard of OpenClaw. But another AI agent tool is rapidly growing in popularity, and it also happens to make a fantastic coding agent: [Hermes](https://hermes-agent.nousresearch.com/).
 
-Hermes is provider-agnostic, terminal-first, and built around tool use, persistent memory, and skills that accumulate over time. You can start with a simple coding workflow and expand it into research, automation, or evaluation without switching tools.
+Hermes is provider-agnostic, terminal-first, and built around tool use, persistent memory, and skills that accumulate over time. You can start with a simple coding workflow and expand it into research, automation, or evaluation without switching tools. One of the most interesting aspects of Hermes is that it gets better at doing what you want it to over time.
 
 One of the reasons Hermes is so useful is because it is self-improving. In Part 1 of this tutorial, we'll be getting our Hermes agent set up with OpenRouter so it can benefit from that same model flexibility. We'll also be showing Hermes how to become an expert in building with OpenRouter so it can help us build a solid product.
 
