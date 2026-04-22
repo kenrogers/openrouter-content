@@ -67,12 +67,19 @@ const client = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 const result = callModel(client, {
     model: 'openai/gpt-4o',
     input: 'What bills were introduced in Colorado this week?',
-    tools: [searchBillsTool, getBillDetailsTool] as const,
+    tools: [searchBillsTool, getBillDetailsTool],
     stopWhen: stepCountIs(5),
 });
 ```
 
+A "step" is one model response plus any tool calls it triggers. `stepCountIs(5)` caps the loop at 5 turns so a runaway model can't burn tokens forever.
+
 Even though we are only calling the `callModel` function once here, that single call might result in 3 separate API requests under the hood, but you (or your agent) as the developer consume it as a single logical operation.
+
+Two fields you will use constantly:
+
+- **`instructions`** — the system prompt. Use it for personality, rules, and context that should apply to every turn.
+- **`input`** — the user message or task. It can be a plain string or an `Item[]` array (we will use the array form later for state persistence).
 
 One of the biggest benefits of using the OpenRouter Agent SDK is that you get the `ModelResult` multi-consumption pattern.
 
@@ -105,42 +112,12 @@ const billData = toolCalls.find(t => t.name === 'get_bill_details')?.arguments;
 
 // Check total cost after the full multi-turn loop completes
 const response = await result.getResponse();
-console.log(`Cost: $${response.usage.cost.toFixed(4)}`);
+console.log(`Cost: $${response.usage?.cost?.toFixed(4) ?? "unknown"}`);
 ```
 
 Most SDKs split streaming and non-streaming into separate entry points and rely on single-use stream branches that you can only consume once. `ModelResult` uses a reusable buffer with independent read positions, so every consumer gets full access to the same underlying data without needing to make a second API call.
 
-Here's an analogy our trusty Hermes agent wrote that might help solidify why this is useful:
-
-"Imagine you hire a research assistant to investigate a bill. The assistant might call you back multiple times — 'I found the bill text,' 'here are the votes,' 'here's my summary' — before the job is done.
-
-With most SDKs, you have to decide upfront how you want to receive that information:
-- Live phone call — you hear everything as it happens, but if you want to reference a specific detail later, you better have been taking notes
-- Email transcript — you get the full report at the end, but you sit in silence until it arrives
-
-callModel gives you a recording of the entire conversation that multiple people can use at the same time, however they want:
-- You listen live on your headphones
-- Your colleague scrubs through to find the specific bill numbers
-- Your accountant checks the receipt at the end to see what it cost
-
-No one steps on anyone else's toes. No one has to coordinate. And if someone joins late, they still get the full recording from the beginning.
-
-That's what ModelResult does. One call. One result. Consume it however many ways you need, even after it has started."
-
-### The Agent Loop
-
-Let's briefly go over how the agent loop works and then we'll get our hands dirty by actually building Capitol Tracker.
-
-When you call `callModel` here is what is happening under the hood:
-
-1. Initial Request - The SDK sends your input, tools, and parameters to the OpenRouter Responses API.
-2. Model Responds - The selected model returns a response. This response might contain text, reasoning, or function call output of items requesting tools.
-3. Tool Execution - If you passed available tools into the call, those will be handled
-4. State Update - The response and tool results are appended to the conversation state.
-5. Follow-up Request - The SDK sends a new request with the tool results included. The model sees the outcome and can call more tools or produce final text.
-6. Repeat until done - The loop continues until the model stops calling tools, a `stopWhen` condition is met, an error occurs, or a tool requires approval and no approvals were provided.
-
-This is a simplified version of the loop, and we'll get more concrete when we dig into the code itself.
+This is exactly what the agent loop described above looks like under the hood — `callModel` runs the loop for you, and `ModelResult` gives you a recording of the whole conversation that you can consume however you need.
 
 ## Building Capitol Tracker
 
