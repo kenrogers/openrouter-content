@@ -12,11 +12,11 @@ By the end of this lesson, you will have:
 - A chat agent for follow-up questions about bills
 - A tested CLI you can run locally
 
-Before we do that, let's take a quick detour to talk about the OpenRouter SDK and specifically the Call Model primitive.
+Before we do that, let's take a quick detour to talk about the OpenRouter Agent SDK and the `callModel` function.
 
 ## Call Model
 
-Before we dive into the SDK, let's make sure we're on the same page about what an agent loop actually is. If you've never built an agent before, this section is for you. If you have, skim it to confirm our vocabulary lines up.
+Let's quickly make sure we're on the same page about what an agent loop actually is. If you've never built an agent before, this section is for you. If you have, skim it to confirm our vocabulary lines up.
 
 ### What is an agent loop?
 
