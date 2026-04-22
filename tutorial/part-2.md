@@ -440,6 +440,19 @@ return text;
 
 **Pattern to notice:** `const text = await result.getText()`. This blocks until the multi-turn agent loop completes and returns the final prose digest. The `await` is explicit so errors bubble cleanly into the caller. If your agent wrapped this in a `try/catch` that swallows the error and returns a string, change it — swallowed errors make it impossible for the CLI to distinguish success from failure programmatically.
 
+**Better UX:** In a real CLI, streaming the digest as it is written is a nicer experience than a blank screen for 30 seconds. You can swap `getText()` for `getTextStream()` with a few extra lines:
+
+```typescript
+let text = "";
+for await (const delta of result.getTextStream()) {
+  text += delta;
+  process.stdout.write(delta);  // print as it arrives
+}
+return text;
+```
+
+We use `getText()` in the tutorial to keep the code minimal, but in your own tool you should absolutely stream the output.
+
 **Pattern to notice:** `stopWhen: stepCountIs(10)`. The `callModel` loop executes once per "turn" (one model response + any tool calls it triggers). A cap of 10 turns is plenty for a digest that reviews 10-20 bill stubs; 20 is overkill and risks burning tokens on a runaway loop.
 
 **Performance tip:** Passing 20 bill stubs into `input` can make the digest slow — the model spends multiple turns inspecting each one. In the reference repo I capped the stub list to 10 before calling `callModel`. Your agent might have done the same, or it might have used a different strategy (like pre-filtering by subject match). If your digest takes longer than a minute, try reducing how many stubs you feed into the prompt.
@@ -516,6 +529,8 @@ const result = callModel(client, {
 const text = await result.getText();
 return text;
 ```
+
+The chat agent also works with `getText()`, but in a real interactive CLI you would stream the response with `getTextStream()` so the user sees text appear as the model generates it. See the "Better UX" note in Checkpoint 4 above for the swap.
 
 **Critical detail:** When `state` is provided, the SDK appends each turn's input and response to the state's message history automatically via `state.save()`. The next time you run `callModel` with the same `state`, `state.load()` returns the full conversation including all prior tool calls and responses. This is how follow-up questions like "tell me more about SB 70" work — the model sees the previous digest and the user's prior questions.
 
