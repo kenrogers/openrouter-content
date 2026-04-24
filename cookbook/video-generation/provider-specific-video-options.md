@@ -30,16 +30,16 @@ if (!response.ok) {
 
 const { data } = await response.json();
 const models = data as VideoModel[];
-const veo = models.find((model: VideoModel) => model.id === "google/veo-3.1");
+const veo = models.find((model: VideoModel) => model.id === "google/veo-3.1-lite");
 
 if (!veo) {
-  throw new Error("google/veo-3.1 was not found in the video model list.");
+  throw new Error("google/veo-3.1-lite was not found in the video model list.");
 }
 
 console.log(veo.allowed_passthrough_parameters);
 ```
 
-For example, `google/veo-3.1` may expose passthrough controls such as `personGeneration`, `negativePrompt`, `conditioningScale`, or `enhancePrompt`.
+For example, `google/veo-3.1-lite` may expose passthrough controls such as `personGeneration`, `negativePrompt`, `conditioningScale`, or `enhancePrompt`.
 
 ## Step 2: Add provider options to the video request
 
@@ -53,12 +53,13 @@ const response = await fetch("https://openrouter.ai/api/v1/videos", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "google/veo-3.1",
+    model: "google/veo-3.1-lite",
     prompt:
       "A 4-second time-lapse of a white orchid blooming on a dark tabletop, macro lens, gentle studio light",
     duration: 4,
     resolution: "720p",
     aspect_ratio: "16:9",
+    generate_audio: false,
     provider: {
       options: {
         "google-vertex": {
@@ -93,11 +94,11 @@ const baseRequest = {
 };
 
 const selectedModel = {
-  id: "google/veo-3.1",
+  id: "google/veo-3.1-lite",
 };
 
 const requestBody =
-  selectedModel.id === "google/veo-3.1"
+  selectedModel.id === "google/veo-3.1-lite"
     ? {
         ...baseRequest,
         model: selectedModel.id,
@@ -130,6 +131,6 @@ Run time: 2 minutes
 1. Show a normalized video request first.
 2. Fetch `GET /api/v1/videos/models`.
 3. Highlight `allowed_passthrough_parameters`.
-4. Add `provider.options` for `google/veo-3.1`.
+4. Add `provider.options` for `google/veo-3.1-lite`.
 5. Submit the job and show the response.
 6. Close with the production pattern: use normalized parameters by default, passthrough only after checking support.

@@ -14,12 +14,14 @@ You need:
 
 Use `input_references` for visual guidance. Use `frame_images` only when you need exact frame control.
 
+Use stable, directly downloadable image URLs. Some providers cannot fetch image URLs that require cookies, redirects through HTML pages, bot checks, or unusual headers.
+
 ## Step 1: Write a prompt that tells the model how to use the references
 
 Reference images work best when the prompt explains what should stay consistent.
 
 ```text
-Create a 6-second product video of the same backpack from the reference image.
+Create a 4-second product video of the same backpack from the reference image.
 Keep the shape, color, and logo placement consistent.
 Place it on a wet city sidewalk at night with neon reflections.
 Use a slow orbiting camera move and realistic lighting.
@@ -35,17 +37,17 @@ const response = await fetch("https://openrouter.ai/api/v1/videos", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "bytedance/seedance-2.0",
+    model: "bytedance/seedance-2.0-fast",
     prompt:
-      "Create a 6-second product video of the same backpack from the reference image. Keep the shape, color, and logo placement consistent. Place it on a wet city sidewalk at night with neon reflections. Use a slow orbiting camera move and realistic lighting.",
-    duration: 6,
+      "Create a 4-second product video of the same backpack from the reference image. Keep the shape, color, and logo placement consistent. Place it on a wet city sidewalk at night with neon reflections. Use a slow orbiting camera move and realistic lighting.",
+    duration: 4,
     resolution: "720p",
     aspect_ratio: "16:9",
     input_references: [
       {
         type: "image_url",
         image_url: {
-          url: "https://example.com/backpack-reference.png",
+          url: "https://example.com/direct-backpack-reference.png",
         },
       },
     ],

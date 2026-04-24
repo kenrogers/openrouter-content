@@ -14,6 +14,8 @@ You need:
 
 `frame_images` is for exact frame control. If you provide both `frame_images` and `input_references`, OpenRouter treats the request as image-to-video.
 
+Use a stable, directly downloadable image URL. Some providers cannot fetch image URLs that require cookies, redirects through HTML pages, bot checks, or unusual headers.
+
 ## Step 1: Choose a model with frame-image support
 
 Fetch the model list and choose a model whose `supported_frame_images` includes the frame type you want:
@@ -35,17 +37,18 @@ const response = await fetch("https://openrouter.ai/api/v1/videos", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "alibaba/wan-2.7",
+    model: "google/veo-3.1-lite",
     prompt:
       "The camera slowly pushes in as the subject turns toward warm window light, cinematic, realistic motion",
-    duration: 5,
+    duration: 4,
     resolution: "720p",
     aspect_ratio: "16:9",
+    generate_audio: false,
     frame_images: [
       {
         type: "image_url",
         image_url: {
-          url: "https://example.com/first-frame.png",
+          url: "https://example.com/direct-first-frame.png",
         },
         frame_type: "first_frame",
       },

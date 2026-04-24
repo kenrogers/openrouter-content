@@ -10,7 +10,7 @@ You need:
 
 - An OpenRouter API key available as `OPENROUTER_API_KEY`
 - Node.js 20 or newer
-- A video model slug, such as `google/veo-3.1`, confirmed with `GET /api/v1/videos/models`
+- A video model slug, such as `google/veo-3.1-lite`, confirmed with `GET /api/v1/videos/models`
 
 ## Step 1: Submit the video job
 
@@ -45,13 +45,13 @@ async function openrouter(path: string, init: RequestInit = {}) {
 const submitResponse = await openrouter("/videos", {
   method: "POST",
   body: JSON.stringify({
-    model: "google/veo-3.1",
+    model: "google/veo-3.1-lite",
     prompt:
       "A cinematic 4-second shot of a glass greenhouse at sunrise, soft mist, slow dolly-in camera movement",
     duration: 4,
     resolution: "720p",
     aspect_ratio: "16:9",
-    generate_audio: true,
+    generate_audio: false,
   }),
 });
 
@@ -170,13 +170,13 @@ async function postJson(path: string, body: unknown) {
 }
 
 const job = await postJson("/videos", {
-  model: "google/veo-3.1",
+  model: "google/veo-3.1-lite",
   prompt:
     "A cinematic 4-second shot of a glass greenhouse at sunrise, soft mist, slow dolly-in camera movement",
   duration: 4,
   resolution: "720p",
   aspect_ratio: "16:9",
-  generate_audio: true,
+  generate_audio: false,
 });
 
 console.log(`Submitted video job: ${job.id}`);

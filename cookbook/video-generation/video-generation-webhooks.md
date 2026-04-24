@@ -91,11 +91,12 @@ const response = await fetch("https://openrouter.ai/api/v1/videos", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "google/veo-3.1",
+    model: "google/veo-3.1-lite",
     prompt: "A clean product reveal of a matte black desk lamp, slow camera slide, studio lighting",
     duration: 4,
     resolution: "720p",
     aspect_ratio: "16:9",
+    generate_audio: false,
     callback_url: "https://your-app.example.com/openrouter/video-webhook",
   }),
 });
