@@ -36,7 +36,7 @@ Hermes is provider-agnostic, terminal-first, and built around tool use, persiste
 
 One of the reasons Hermes is so useful is because it is self-improving. In Part 1 of this tutorial, we'll be getting our Hermes agent set up with OpenRouter so it can benefit from that same model flexibility. We'll also be showing Hermes how to become an expert in building with OpenRouter so it can help us build a solid product.
 
-Just today (as of the time of this writing, April 20, 2026) Kimi K2.6 was released. By using OpenRouter for both our coding agent and as the LLM provider for our agent product, we can try out K2.6 nearly instantaneously without needing to refactor any of our project. And in fact that's exactly what we'll be doing in this series.
+Kimi K2.6 was released on April 20, 2026. By using OpenRouter for both our coding agent and as the LLM provider for our agent product, we can try out a newly released model nearly instantaneously without needing to refactor the project. In this series, Kimi K2.6 is the example model I used, but the reference implementation also supports `OPENROUTER_MODEL` and falls back to `openrouter/auto` if your preferred model slug is unavailable.
 
 Langfuse and OpenRouter Broadcast close the loop. Once your app is running, you need to see what is happening inside it — costs, latencies, error rates, evals. Broadcast pushes your OpenRouter traces directly to Langfuse (and a bunch of other providers) automatically so you get that visibility without building custom plumbing.
 

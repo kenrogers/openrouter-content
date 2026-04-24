@@ -12,6 +12,8 @@ By the end of this lesson, you will have:
 - A chat agent for follow-up questions about bills
 - A tested CLI you can run locally
 
+For the reference implementation, you will need Node.js 20+ or 22+, npm, git, an OpenRouter API key, and an OpenStates API key. If you clone the reference repo, run `npm install` before running the commands in this lesson.
+
 Before we do that, let's take a quick detour to talk about the OpenRouter Agent SDK and the `callModel` function.
 
 ## Call Model
@@ -73,14 +75,14 @@ const result = openrouter.callModel({
 });
 ```
 
-A "step" is one model response plus any tool calls it triggers. `stepCountIs(5)` caps the loop at 5 turns so a runaway model can't burn tokens forever.
+A "step" is one model response plus any tool calls it triggers. `stepCountIs(5)` caps the loop at 5 turns, giving you explicit control over cost and latency.
 
 Even though we are only calling the `callModel` function once here, that single call might result in 3 separate API requests under the hood, but you (or your agent) as the developer consume it as a single logical operation.
 
 Two fields you will use constantly:
 
 - **`instructions`** — the system prompt. Use it for personality, rules, and context that should apply to every turn.
-- **`input`** — the user message or task. It can be a plain string or a message array. The docs show the shorthand `{ role: 'user', content: '...' }` form; we will use the explicit `Item` form (with `type: 'message'`) later when we add state persistence because it formats more reliably alongside loaded conversation history.
+- **`input`** — the user message or task. It can be a plain string or a message array. The docs show the shorthand `{ role: 'user', content: '...' }` form, and that is the form we will use later when adding state persistence.
 
 One of the biggest benefits of using the OpenRouter Agent SDK is that you get the `ModelResult` multi-consumption pattern.
 
@@ -100,7 +102,7 @@ for await (const item of result.getItemsStream()) { }   // stream complete items
 
 `getItemsStream()` is the **recommended approach** and the one the docs emphasize. It is built on OpenRouter's Responses API, which uses an **items-based model** rather than the messages-based model used by OpenAI Chat or Vercel AI SDK. The key insight: items are emitted multiple times with the same ID but progressively updated content. You replace the item by ID rather than accumulating raw chunks. This matters because the same stream can contain messages, tool calls, reasoning, and tool results all interleaved — `getItemsStream()` gives you structured access to all of them as complete, typed objects.
 
-For Capitol Tracker, this means we can stream the human-readable summary to the terminal, capture tool calls as they complete, and check usage from the final response — all from the same `callModel` result:
+For Capitol Tracker, this means we can stream the human-readable summary to the terminal, then inspect buffered tool calls and usage exposed on the final response — all from the same `callModel` result:
 
 ```typescript
 // Stream the final analysis to the user
@@ -108,14 +110,15 @@ for await (const delta of result.getTextStream()) {
   process.stdout.write(delta);
 }
 
-// Independently capture tool calls as they complete
+// Inspect buffered tool calls from the same result
 for await (const item of result.getItemsStream()) {
   if (item.type === 'function_call') {
     console.log(`Tool call: ${item.name}`, item.arguments);
   }
 }
 
-// Check usage from the final response
+// Check usage exposed on the final response
+// For full multi-turn cost visibility, use Broadcast traces in Part 3.
 const response = await result.getResponse();
 console.log(`Cost: $${response.usage?.cost?.toFixed(4) ?? "unknown"}`);
 ```
@@ -144,25 +147,25 @@ Built out the minimal Capitol Tracker at ~/projects/capitol-tracker. Here's what
     Architecture implemented
     - src/services/openstates.ts — Thin REST client for OpenStates API v3 (not GraphQL). Lists bills with updated_since filtering and fetches full bill details including actions, sponsors, and sources.
     - src/tools/bills.ts — Two typed tools: get_bill_details and search_bills. Factory pattern closes over the OpenStates client. Each tool catches errors and returns structured failure messages so the model can react.
-    - src/agents/digest.ts — Single-loop digest agent using callModel with moonshotai/kimi-k2.6. The model selectively calls get_bill_details only for bills that look high-impact, then writes a prose digest when done. Stop condition: stepCountIs(10). Errors propagate to the CLI layer for clean reporting.
+    - src/agents/digest.ts — Single-loop digest agent using callModel. The model selectively calls get_bill_details only for bills that look high-impact, then writes a prose digest when done. Stop condition: stepCountIs(10). Errors propagate to the CLI layer for clean reporting.
     - src/agents/chat.ts — Follow-up chat agent with file-based state persistence via the SDK's StateAccessor pattern. Uses async fs/promises for I/O, validates loaded state, and injects the latest digest as a one-time context message on the first turn. Conversation history is saved to ~/.capitol-tracker/state.json automatically by the SDK, so multi-turn context survives across CLI invocations.
     - src/cli/index.ts — Three commands: fetch [days], digest [days], chat. Handles async errors in the readline loop and uses the profile state in log messages.
 
     Profile-driven config
-    - config/profile.yaml defines state, interests, priorities, impact signals, and digest style.
-    - src/config/loader.ts validates with Zod using js-yaml for robust parsing and falls back to the project default if no user profile exists at ~/.capitol-tracker/profile.yaml.
+    - ~/.capitol-tracker/profile.json defines state, session, interests, priorities, and digest style when the user wants to override the defaults.
+    - src/config/loader.ts validates the profile with Zod and falls back to project defaults if no user profile exists at ~/.capitol-tracker/profile.json.
 
     Bastiat lens
     - Baked into the digest instructions: the model is prompted to analyze seen/unseen effects, cost-shifting, incentives, and whether a bill expands or shrinks government scope.
 
     Build status
     - npx tsc emits successfully.
-    - Our source files have zero type errors. The only errors shown are upstream noise from @openrouter/agent and zod declaration files in node_modules — benign at runtime.
+    - npm test passes.
 
     To test it
     You'll need both API keys set in your environment or a .env file:
-    export OPENROUTER_API_KEY=***
-    export OPENSTATES_API_KEY=***
+    export OPENROUTER_API_KEY=sk-or-...
+    export OPENSTATES_API_KEY=your-openstates-api-key
 
     Then:
     cd ~/projects/capitol-tracker
@@ -178,15 +181,30 @@ Built out the minimal Capitol Tracker at ~/projects/capitol-tracker. Here's what
 
 At first glance, it seems to have done a good job of working with `callModel` the way it is supposed to. Let's wire up our API keys and then we'll have Hermes run through that quick smoke test it mentioned.
 
-We can set our API keys by creating a `.env` file in the project root:
+OpenStates API v3 requires an API key. Start with the [OpenStates API v3 docs](https://docs.openstates.org/api-v3/) and use the registration link there to create a Plural Policy/OpenStates key.
+
+We can set our API keys by creating a `.env` file in the project root. If your project has an `.env.example`, copy it first:
 
 ```bash
 # In your project directory
-echo "OPENROUTER_API_KEY=***" > .env
-echo "OPENSTATES_API_KEY=***" >> .env
+cp .env.example .env
 ```
 
-Make sure your CLI entry point loads it. You can install `dotenv` and import it at the top of `src/cli/index.ts`:
+Then edit `.env` so it contains your real keys:
+
+```bash
+OPENROUTER_API_KEY=sk-or-...
+OPENSTATES_API_KEY=your-openstates-api-key
+OPENROUTER_MODEL=openrouter/auto
+```
+
+Make sure your CLI entry point loads it. If your project does not already include `dotenv`, install it:
+
+```bash
+npm install dotenv
+```
+
+Then import it at the top of `src/cli/index.ts`:
 
 ```typescript
 import 'dotenv/config';
@@ -227,7 +245,7 @@ The CLI works end-to-end. If you want, I can:
 What do you want to tackle first?
 ```
 
-This is great! We have a decently working first version of our Capitol Tracker CLI tool. Now of course your output will be different, but what we're going to do now is actually take a look under the hood and see what code Hermes generated for us, dig into how it works so you have a solid understanding, and see what improvements we can direct Hermes to make.
+We now have a working first version of the Capitol Tracker CLI. Your output will probably be different, but the next step is the same: look under the hood, inspect what Hermes generated, understand how it works, and identify the improvements worth making.
 
 ## What Hermes built (and what yours should look like)
 
@@ -237,7 +255,7 @@ I have a complete reference implementation at [github.com/kenrogers/capitol-trac
 
 At each of these checkpoints, take a look at the code your agent produced and see if it fits the patterns and has the requirements.
 
-If you aren't sure, ask your agent! Learning how to collaborate with your coding agent is an excellent practice to get into. If you notice areas where the agent didn't get it quite right, direct it to improve by pointing it at this tutorial or at rhe OpenRouter docs and telling it how it needs to improve.
+If you aren't sure, ask your agent! Learning how to collaborate with your coding agent is an excellent practice to get into. If you notice areas where the agent didn't get it quite right, direct it to improve by pointing it at this tutorial or at the OpenRouter docs and telling it how it needs to improve.
 
 ### Checkpoint 1: Do you have an OpenRouter client?
 
@@ -338,7 +356,7 @@ One typing detail to verify in your own code: when you pass tools to `callModel`
 
 ### Checkpoint 3: Do you have a search tool and a details tool?
 
-The digest agent needs to find bills. The chat agent needs to answer queries like "tell me more about how SB 70 would work in practice" Verify your agent created tools that cover these two capabilities, even if the names differ.
+The app needs two bill-data capabilities: listing/searching bill stubs, and fetching full bill details. In the reference implementation, the digest pipeline calls `OpenStatesClient.listBills()` before `callModel` and gives the digest model only `get_bill_details`; the chat agent gets both `search_bills` and `get_bill_details` so it can answer queries like "tell me more about how SB 70 would work in practice." Verify that your agent covers both capabilities, even if the exact names or placement differ.
 
 Here is my search tool. Check yours for equivalent behavior:
 
@@ -453,7 +471,7 @@ At first Hermes created three tools, one for searching, one for getting details,
 
 A `compare_bills` tool is narrow: it only handles exactly two bills.
 
-The model is already capable of parallel tool calls. When you ask "how do SB 40 and HB 101 compare?" the model can call `get_bill_details` for both bills in the same turn, receive both results, and synthesize the comparison in its response. You get the same outcome with less code and more flexibility. THis is also just not a very realistic or common scenario in a tool like this.
+The model is already capable of parallel tool calls. When you ask "how do SB 40 and HB 101 compare?" the model can call `get_bill_details` for both bills in the same turn, receive both results, and synthesize the comparison in its response. You get the same outcome with less code and more flexibility. This is also just not a very realistic or common scenario in a tool like this.
 
 Keep an eye out for overengineering like this in your agent's output and seek to simplify where you can.
 
@@ -467,13 +485,14 @@ This is the core of the application. Verify your agent created a function that c
 - At least one tool the model can call to fetch more details
 - A `stopWhen` condition so the loop can't run forever
 
-Here is my digest agent. Use it to validate the shape of yours:
+Here is my digest agent. Use it to validate the shape of yours. The reference implementation resolves this model through `src/services/models.ts`, which checks the live OpenRouter model list and falls back to `openrouter/auto`; the snippet below keeps that part compact.
 
 ```typescript
 const billTool = getBillDetailsTool(openStatesClient);
+const model = process.env.OPENROUTER_MODEL ?? "openrouter/auto";
 
 const result = client.callModel({
-  model: "moonshotai/kimi-k2.6",
+  model,
   instructions: buildInstructions(profile),
   input:
     `Here are the recently updated bills for ${profile.state}:\n\n` +
@@ -561,6 +580,7 @@ And here is how you pass it to `callModel`:
 ```typescript
 const STATE_DIR = join(homedir(), ".capitol-tracker");
 const STATE_PATH = join(STATE_DIR, "state.json");
+const model = process.env.OPENROUTER_MODEL ?? "openrouter/auto";
 
 const state = createFileStateAccessor(STATE_PATH);
 
@@ -582,7 +602,7 @@ input.push({
 });
 
 const result = client.callModel({
-  model: "moonshotai/kimi-k2.6",
+  model,
   instructions: buildInstructions(profile),  // system prompt only — no digest here
   input,
   tools,
@@ -607,7 +627,7 @@ The `load` and `save` methods are async, which is why the reference uses `fs/pro
 
 When you pass `state` to `callModel`, the SDK appends each turn's input and response to the state's message history automatically via `state.save()`. The next time you run `callModel` with the same `state`, `state.load()` returns the full conversation including all prior tool calls and responses. This is how follow-up questions like "tell me more about SB 70" work — the model sees the previous digest and the user's prior questions.
 
-Notice that the digest is loaded into `input`, not `instructions`. The `instructions` field is functionally a system prompt: it gets sent on every turn. If you injected a 2,000-token digest into `instructions`, you would pay for those tokens repeatedly across a multi-turn conversation. By loading the digest as a one-time user message on the first turn, it enters the persisted conversation history once and stays there for free on subsequent turns. Verify that your own chat agent does the same — if the digest is in `instructions`, you are paying for it on every turn.
+Notice that the digest is loaded into `input`, not `instructions`. The `instructions` field is functionally a system prompt: it gets sent on every turn. If you injected a 2,000-token digest into `instructions`, you would force that digest into every request. By loading the digest as a one-time user message on the first turn, the app avoids re-injecting it into `instructions` every time. It is still part of the persisted conversation history, so it can still contribute to token usage on future turns. For a longer-lived app, add pruning or summarization once the state grows. Verify that your own chat agent follows the same pattern.
 
 If your agent used a custom `loadState()` / `saveState()` wrapper but never actually passed `state` into `callModel`, then persistence is not happening. The `StateAccessor` must be passed to `callModel` for the SDK to use it. Check your code: is `state` actually present in the `callModel` call?
 
@@ -681,11 +701,19 @@ Your Colorado digest is ready. I focused on the five bills that actually move th
 Everything else in the update was either ceremonial, too narrow, or already headed to the Governor with little drama, so I left it out. Let me know if you want me to track any of these through their next votes.
 ```
 
-That's pretty interesting!
+That gives us a useful lead, but I don't have much context on SB 70 yet. I'd like to know more about what it is.
 
-I don't have any context on SB 70 though, but I'd like to know more about what it is.
+So I'll start the chat command:
 
-So I'll respond with "tell me more about sb70, what is this location data ban?"
+```bash
+npx tsx src/cli/index.ts chat
+```
+
+Then inside chat, I'll respond with:
+
+```text
+tell me more about sb70, what is this location data ban?
+```
 
 That will kick off the `chat` agent we made and do some research on that individual bill. After running that I get:
 
@@ -718,7 +746,7 @@ If you want, I can compare this with any other surveillance or privacy bills flo
 
 ## Next Steps
 
-We now have a solid Hermes OpenRouter developer agent set up and specifically trained on using the OpenRouter Agents SDK. It was also able to create a well-functioning CLI tool for helping us to stay more informed on our state's politics.
+We now have a Hermes OpenRouter developer agent set up and specifically trained on using the OpenRouter Agent SDK. It also created a working CLI tool for helping us stay more informed on our state's politics.
 
 But we don't have much visibility into what's happening under the hood here.
 

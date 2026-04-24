@@ -10,13 +10,13 @@ It learns how you work and improves the more you use it.
 
 Hermes also works with OpenRouter out of the box. This is great because you can easily switch between models whenever you like with a single config change. If you use OpenRouter, you can use whatever model you want and switch to it in seconds.
 
-As of the time of this writing (April 20, 2026), Kimi K2.6 has just been released so we'll be testing that out by building our capitol tracker inside Hermes using Kimi K2.6.
+Kimi K2.6 was released on April 20, 2026, so I used it while building Capitol Tracker in Hermes. Model availability changes quickly, so treat Kimi K2.6 as the example model for the walkthrough rather than a requirement.
 
 By the end of this lesson, you will have:
 
 - Hermes Agent installed locally
 - OpenRouter connected as your model provider
-- Kimi K2.6 selected inside Hermes
+- A current OpenRouter model selected inside Hermes
 - Hermes trained as an OpenRouter expert
 - A working project directory ready for the rest of the series
 - A clear architecture plan for the State Capitol Tracker
@@ -28,6 +28,7 @@ In the next part, we will use this setup to build the tracker with the OpenRoute
 You should have:
 
 - An OpenRouter account and API key
+- Node.js 20+ or 22+, npm, and git
 - Python installed on your machine
 - A terminal you are comfortable working in
 
@@ -54,7 +55,7 @@ Let's get started.
 
 The best place to start is the [Hermes Quickstart guide](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart).
 
-That will walk you through getting Hermes set up and setting Kimi K2.6 via OpenRouter to be your model.
+That will walk you through getting Hermes set up and choosing an OpenRouter model.
 
 After you get it installed, you can run through the setup process with `hermes setup` to go through the full setup process and set Hermes up with messaging access. During that process you'll have a chance to select OpenRouter as your provider, provide your API key, and select your model.
 
@@ -62,7 +63,7 @@ You can also just run `hermes model` if you only want to set up the provider and
 
 ![Model selection](select-model.png)
 
-If the model you want to use (Kimi K2.6 in our case) is not in the predefined list, you can visit [https://openrouter.ai/models](https://openrouter.ai/models) to get a list of models. Click on the one you want to get the model slug. That's what you can add to Hermes as a custom model provider. We'll use `moonshotai/kimi-k2.6` for this one.
+If the model you want to use is not in the predefined list, visit [https://openrouter.ai/models](https://openrouter.ai/models) to get the current model slug. Click the model you want and copy its slug into Hermes as a custom model. For the run shown in this tutorial, I used `moonshotai/kimi-k2.6`; before publishing or rerunning the tutorial, quickly confirm that slug still appears in the OpenRouter model list.
 
 ![Custom model](custom-model.png)
 
@@ -83,7 +84,7 @@ When I ask you to help build with OpenRouter, apply this knowledge. Do not guess
 
 Whenever we begin working on an openrouter project in a new session we should pull the latest version of the docs to make sure we are working with the most current documentation.
 
-In addition, you should have the source code for the SDK itself available to refer to as you are building, the repo is here: https://github.com/OpenRouterTeam/typescript-agent. Clone this repo so it is available to you whenever you are building and keep it up to date when you begin new sessions. Here is the readme for the package: https://github.com/OpenRouterTeam/typescript-agent/tree/main/packages/agent
+In addition, you should have the source code for the SDK itself available to refer to as you are building. Clone the [OpenRouter TypeScript Agent SDK repo](https://github.com/OpenRouterTeam/typescript-agent) so it is available to you whenever you are building and keep it up to date when you begin new sessions. Use the repository README and the official OpenRouter TypeScript SDK docs as your source of truth.
 ```
 
 When I ran this in Hermes it did a bunch of code exploration, cloned the agent repo and created a new skill called `openrouter-typescript-agent`.
@@ -143,7 +144,7 @@ After some back and forth with Hermes, here is the starting point I have for Cap
 
 The Capitol Tracker MVP will be a CLI built with the OpenStates API for getting the legislature data and the OpenRouter TypeScript SDK for building the actual agent functionality.
 
-It will kick off with a simple `npx capitol-tracker digest` command which will first prompt some setup if the user hasn't done that yet, API keys, desired state, interests, etc. Then it will pull a digest of the bills introduced the previous day with a summary. From there it will drop into an interactive session where the user can dig more deeply into any of the bills using a research tool we'll build with OpenRouter's `callModel` primitive.
+The product shape I wanted was simple: run a digest command to summarize recent bills, then run a chat command when you want to dig into a specific bill. In the reference implementation, setup is explicit rather than wizard-driven: create a `.env` file for API keys, optionally create `~/.capitol-tracker/profile.json` for state and preference overrides, run `npx tsx src/cli/index.ts digest 1`, then run `npx tsx src/cli/index.ts chat` for follow-ups. A packaged `npx capitol-tracker digest` command and interactive setup wizard would be natural polish later, but we will keep the tutorial focused on the working agent architecture.
 
 Your agent might produce a different structure — maybe it puts everything in one file, uses classes instead of factory functions, or names things differently. That is fine. In Part 2 we will review the code using pattern-based checkpoints, not file-by-file comparisons. The goal is to understand why each piece works, not to make your files match mine exactly.
 
