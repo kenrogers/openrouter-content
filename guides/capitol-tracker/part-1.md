@@ -63,7 +63,7 @@ You can also just run `hermes model` if you only want to set up the provider and
 
 ![Model selection](select-model.png)
 
-If the model you want to use is not in the predefined list, visit [https://openrouter.ai/models](https://openrouter.ai/models) to get the current model slug. Click the model you want and copy its slug into Hermes as a custom model. For the run shown in this tutorial, I used `moonshotai/kimi-k2.6`; before publishing or rerunning the tutorial, quickly confirm that slug still appears in the OpenRouter model list.
+The screenshots in this section are illustrative because Hermes and OpenRouter model lists change frequently. If the model you want to use is not in the predefined list, visit [https://openrouter.ai/models](https://openrouter.ai/models) to get the current model slug. Click the model you want and copy its slug into Hermes as a custom model. For the run shown in this tutorial, I used `moonshotai/kimi-k2.6`; before publishing or rerunning the tutorial, quickly confirm that slug still appears in the OpenRouter model list.
 
 ![Custom model](custom-model.png)
 
@@ -74,7 +74,7 @@ Now we are going to give Hermes a focused knowledge injection. The goal is to tu
 Inside Hermes, paste the following prompt. Feel free to customize this to your liking:
 
 ```text
-Use the following materials to train yourself to become an expert on OpenRouter and its TypeScript SDK. We are going to be working on building agentic applications using the TypeScript SDK, so create whatever skills will be needed to help you do this effectively.
+Use the following materials to train yourself to become an expert on OpenRouter and the OpenRouter TypeScript Agent SDK. We are going to build agentic applications with `@openrouter/agent`, especially `OpenRouter`, `callModel`, `tool`, `StateAccessor`, and the built-in stop conditions. Treat `@openrouter/sdk` as a supporting dependency/source reference only; the app code should use the Agent SDK primitives.
 
 OpenRouter docs index: https://openrouter.ai/docs/llms.txt
 
@@ -84,7 +84,7 @@ When I ask you to help build with OpenRouter, apply this knowledge. Do not guess
 
 Whenever we begin working on an openrouter project in a new session we should pull the latest version of the docs to make sure we are working with the most current documentation.
 
-In addition, you should have the source code for the SDK itself available to refer to as you are building. Clone the [OpenRouter TypeScript Agent SDK repo](https://github.com/OpenRouterTeam/typescript-agent) so it is available to you whenever you are building and keep it up to date when you begin new sessions. Use the repository README and the official OpenRouter TypeScript SDK docs as your source of truth.
+In addition, you should have the source code for the Agent SDK itself available to refer to as you are building. Clone the [OpenRouter TypeScript Agent SDK repo](https://github.com/OpenRouterTeam/typescript-agent) so it is available to you whenever you are building and keep it up to date when you begin new sessions. Use the repository README, source files, and official OpenRouter docs as your source of truth.
 ```
 
 When I ran this in Hermes it did a bunch of code exploration, cloned the agent repo and created a new skill called `openrouter-typescript-agent`.
@@ -147,6 +147,17 @@ The Capitol Tracker MVP will be a CLI built with the OpenStates API for getting 
 The product shape I wanted was simple: run a digest command to summarize recent bills, then run a chat command when you want to dig into a specific bill. In the reference implementation, setup is explicit rather than wizard-driven: create a `.env` file for API keys, optionally create `~/.capitol-tracker/profile.json` for state and preference overrides, run `npx tsx src/cli/index.ts digest 1`, then run `npx tsx src/cli/index.ts chat` for follow-ups. A packaged `npx capitol-tracker digest` command and interactive setup wizard would be natural polish later, but we will keep the tutorial focused on the working agent architecture.
 
 Your agent might produce a different structure — maybe it puts everything in one file, uses classes instead of factory functions, or names things differently. That is fine. In Part 2 we will review the code using pattern-based checkpoints, not file-by-file comparisons. The goal is to understand why each piece works, not to make your files match mine exactly.
+
+Before moving on, ask Hermes to leave you with a concrete project root and a runnable TypeScript scaffold. A good handoff checklist is:
+
+- `pwd` points at the Capitol Tracker project directory.
+- `package.json` exists and includes scripts for `build`, `test`, `fetch`, `digest`, and `chat`.
+- The project depends on `@openrouter/agent`, `dotenv`, `zod`, `tsx`, `typescript`, and `@types/node`.
+- `.env.example` documents `OPENROUTER_API_KEY`, `OPENSTATES_API_KEY`, and optional `OPENROUTER_MODEL`.
+- `src/cli/index.ts` exists and imports `dotenv/config`.
+- `npx tsc --noEmit` runs cleanly.
+
+If any of those are missing, have Hermes add them before starting Part 2.
 
 ## What you have now
 

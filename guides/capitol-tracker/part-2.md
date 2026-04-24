@@ -190,12 +190,12 @@ We can set our API keys by creating a `.env` file in the project root. If your p
 cp .env.example .env
 ```
 
-Then edit `.env` so it contains your real keys:
+Then edit `.env` so it contains your real keys. I recommend setting an explicit model while you build instead of relying on `openrouter/auto`; the reference implementation still falls back safely if the slug later disappears.
 
 ```bash
 OPENROUTER_API_KEY=sk-or-...
 OPENSTATES_API_KEY=your-openstates-api-key
-OPENROUTER_MODEL=openrouter/auto
+OPENROUTER_MODEL=moonshotai/kimi-k2.6
 ```
 
 Make sure your CLI entry point loads it. If your project does not already include `dotenv`, install it:
@@ -208,6 +208,21 @@ Then import it at the top of `src/cli/index.ts`:
 
 ```typescript
 import 'dotenv/config';
+```
+
+If your agent has not added the basic dependencies yet, install them now:
+
+```bash
+npm install @openrouter/agent dotenv zod
+npm install --save-dev tsx typescript @types/node
+```
+
+Also ask Hermes to add a small model resolver before the smoke test. This prevents a stale `OPENROUTER_MODEL` value from turning into a confusing runtime failure:
+
+```markdown
+Add a model resolver for Capitol Tracker.
+
+Create `src/services/models.ts`. It should read `OPENROUTER_MODEL`, default to `openrouter/auto`, fetch `https://openrouter.ai/api/v1/models` with the OpenRouter API key, and return the preferred model only if it appears in the live model list. If the preferred model is missing, fall back to `openrouter/auto`. Use this resolver in the CLI before calling the digest or chat agents.
 ```
 
 Then I'll jump into a new Hermes session and run:
@@ -259,7 +274,7 @@ If you aren't sure, ask your agent! Learning how to collaborate with your coding
 
 ### Checkpoint 1: Do you have an OpenRouter client?
 
-Every agent you build needs a configured OpenRouter client. Verify your code has something equivalent to this:
+Every agent you build needs a configured OpenRouter client. Verify your code has something equivalent to this excerpt:
 
 ```typescript
 import { OpenRouter } from '@openrouter/agent';
@@ -278,7 +293,7 @@ The Agent SDK's `tool()` function is what turns your code into something the mod
 3. An `inputSchema` (Zod) defining the parameters
 4. An `execute` function that runs when the model calls it
 
-Here is what my agent produced for the bill-details tool. Use it to check whether your tool has the same structural properties, even if the names or formatting differ:
+Here is what my agent produced for the bill-details tool. This is an excerpt, so your file also needs imports for `tool`, `OpenStatesClient`, and any local bill types. Use it to check whether your tool has the same structural properties, even if the names or formatting differ:
 
 ```typescript
 import { z } from "zod";
@@ -358,7 +373,7 @@ One typing detail to verify in your own code: when you pass tools to `callModel`
 
 The app needs two bill-data capabilities: listing/searching bill stubs, and fetching full bill details. In the reference implementation, the digest pipeline calls `OpenStatesClient.listBills()` before `callModel` and gives the digest model only `get_bill_details`; the chat agent gets both `search_bills` and `get_bill_details` so it can answer queries like "tell me more about how SB 70 would work in practice." Verify that your agent covers both capabilities, even if the exact names or placement differ.
 
-Here is my search tool. Check yours for equivalent behavior:
+Here is my search tool excerpt. Check yours for equivalent behavior:
 
 ```typescript
 export function searchBillsTool(client: OpenStatesClient) {
@@ -411,7 +426,7 @@ export function searchBillsTool(client: OpenStatesClient) {
 }
 ```
 
-Here is the details tool.
+Here is the details tool excerpt.
 
 ```typescript
 export function getBillDetailsTool(client: OpenStatesClient) {
@@ -485,7 +500,7 @@ This is the core of the application. Verify your agent created a function that c
 - At least one tool the model can call to fetch more details
 - A `stopWhen` condition so the loop can't run forever
 
-Here is my digest agent. Use it to validate the shape of yours. The reference implementation resolves this model through `src/services/models.ts`, which checks the live OpenRouter model list and falls back to `openrouter/auto`; the snippet below keeps that part compact.
+Here is my digest agent excerpt. Use it to validate the shape of yours. The reference implementation resolves this model through `src/services/models.ts`, which checks the live OpenRouter model list and falls back to `openrouter/auto`; the snippet below keeps that part compact.
 
 ```typescript
 const billTool = getBillDetailsTool(openStatesClient);
@@ -575,7 +590,7 @@ function createFileStateAccessor(path: string): StateAccessor {
 }
 ```
 
-And here is how you pass it to `callModel`:
+And here is the relevant excerpt for passing it to `callModel`:
 
 ```typescript
 const STATE_DIR = join(homedir(), ".capitol-tracker");
@@ -653,6 +668,23 @@ Let's finish up this lesson by running through a quick manual test of Capitol Tr
 
 We'll change into our capitol tracker directory inside our Hermes agent and make sure our API keys are available. If you created a `.env` file earlier, verify it is in the project root and that `src/cli/index.ts` imports `dotenv/config` at the top. If you are using shell exports instead, make sure they are active in your current terminal session.
 
+The reference profile defaults to Colorado's `2026A` session because that was active while this tutorial was written. If you want a different state, or if Colorado's session changes after publication, create `~/.capitol-tracker/profile.json`:
+
+```json
+{
+  "state": "Colorado",
+  "session": "2026A",
+  "priorities": ["privacy", "civil liberties", "property rights"],
+  "interests": [],
+  "digest": {
+    "max_items": 5,
+    "style": "concise"
+  }
+}
+```
+
+You can find current sessions in the OpenStates API docs and jurisdiction endpoints. If `fetch 1` returns no bills, first check that the `state`, `session`, and date window match current legislative data.
+
 To make sure that works we'll do a quick fetch of the OpenStates API (note I am doing this based on what my agent generated, your method might be different. I recommend working with your Hermes agent to see how best to test out your version of what we built).
 
 ```bash
@@ -718,7 +750,7 @@ tell me more about sb70, what is this location data ban?
 That will kick off the `chat` agent we made and do some research on that individual bill. After running that I get:
 
 ```markdown
-**SB 70** — *Ban Government Access Historical Location Information Database* — is moving right now. It just cleared the Senate Appropriations Committee today (April 21, 2026) and heads next to the full Senate floor.
+**SB 70** — *Ban Government Access Historical Location Information Database* — was moving when this sample was captured. It had just cleared the Senate Appropriations Committee on April 21, 2026 and was headed next to the full Senate floor.
 
 ### What “location data” means here
 

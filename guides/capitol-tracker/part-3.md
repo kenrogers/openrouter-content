@@ -27,7 +27,7 @@ You should have:
 - A working `OPENROUTER_API_KEY`
 - A working `OPENSTATES_API_KEY`
 - A Langfuse account or self-hosted Langfuse instance
-- Access to [OpenRouter Settings > Observability](https://openrouter.ai/workspaces/default/observability)
+- Access to the OpenRouter workspace that owns your API key
 
 You do not need to add the Langfuse SDK to this app for the main path. Langfuse receives traces from OpenRouter through Broadcast. That is the point of this integration: less instrumentation in your application code.
 
@@ -69,7 +69,7 @@ Langfuse will also show a ready-to-copy `.env` block. That is useful if you are 
 
 ## Step 2: Enable Broadcast in OpenRouter
 
-Now go to [OpenRouter Settings > Observability](https://openrouter.ai/workspaces/default/observability).
+Now open OpenRouter, select the workspace that owns your Capitol Tracker API key, and go to **Settings > Observability**. If you use the default personal workspace, this is usually [OpenRouter Settings > Observability](https://openrouter.ai/workspaces/default/observability).
 
 Toggle **Enable Broadcast**.
 
@@ -137,7 +137,7 @@ The useful fields for this app are:
 
 For a CLI app, we do not have real user accounts, so we can use something simple like `local-user`. For production, use your application's actual user ID.
 
-Let's ask Hermes to add this cleanly rather than scattering objects across the codebase. The code blocks below are review targets: they show the shape we want Hermes to produce, not random snippets for you to paste into whichever file happens to be open.
+Let's ask Hermes to add this cleanly rather than scattering objects across the codebase.
 
 ```markdown
 Add OpenRouter observability metadata to Capitol Tracker.
@@ -208,7 +208,7 @@ export async function buildTraceMetadata(options: {
 }
 ```
 
-Your file paths may differ. In my reference app, this helper would fit naturally near the config code, because it depends on the user's profile. If your agent puts it in `src/observability/trace.ts`, that is also fine.
+Your file paths may differ. In my reference app, this helper would fit naturally near the config code, because it depends on the user's profile. If your agent puts it in `src/observability/trace.ts` or something like that, that is also fine.
 
 The important thing is not the exact file name. The important thing is that every model call gets consistent metadata.
 
@@ -273,7 +273,7 @@ Let's walk through what this is doing so you can verify your own implementation.
 
 The extra fields in `additionalProperties` — `environment`, `feature`, `state`, `legislative_session`, and `days_back` — are ordinary custom metadata. They are useful later when you want to filter traces by environment, compare Colorado to another state, or look at only digest runs with a 7-day window.
 
-Check your own code: does every `callModel` call include useful trace metadata? If not, add it now. Observability is much easier when you design it before you need it.
+Check your own code: does every `callModel` call include useful trace metadata? If not, add it now.
 
 ## Step 5: Verify the trace in Langfuse
 
@@ -328,16 +328,13 @@ Here is the practical debugging order I use:
 1. Use **Send Trace** from the OpenRouter destination action menu. If that does not appear in Langfuse, re-check the Langfuse project, base URL, region, and API keys.
 2. Check the OpenRouter API key used by the CLI. It must be in the same workspace where Broadcast is enabled, unless your destination explicitly includes that key in its API key filter.
 3. Confirm the CLI request actually completed through OpenRouter. A failed OpenStates fetch or local TypeScript error will not create an OpenRouter trace.
-4. Widen the Langfuse time range from **Past 1 day** to **Past 7 days** and click **Refresh**. The Langfuse UI is fast, but trace ingestion is still asynchronous.
-5. If Privacy Mode is enabled, do not expect prompt or completion content. Usage, cost, timing, model, and metadata should still be present.
+4. If Privacy Mode is enabled, do not expect prompt or completion content. Usage, cost, timing, model, and metadata should still be present.
 
 ## Checkpoint 1: Can you see cost and token usage?
 
 Open one digest trace and look at the usage data.
 
-OpenRouter includes usage information automatically. You do not need to pass deprecated flags like `usage: { include: true }` or `stream_options: { include_usage: true }`.
-
-For a simple direct model call, usage is straightforward. For an agent loop, remember that `callModel` may make multiple model requests under the hood. If the model calls `get_bill_details` and then responds, that is more than one model turn. In the verified run above, Langfuse showed separate request and generation rows for the tool-selection turn and the final-answer turn.
+For a simple direct model call, usage is straightforward. For an agent loop, remember that `callModel` may make multiple model requests under the hood. If the model calls `get_bill_details` and then responds, that is more than one model turn. In the run above, Langfuse showed separate request and generation rows for the tool-selection turn and the final-answer turn.
 
 Broadcast is valuable here because it lets you inspect the actual trace rather than relying only on the final text response.
 
@@ -367,7 +364,7 @@ In Langfuse, inspect the trace and look for tool activity. Tool calls may appear
 
 This is the core agent debugging loop. The model is making decisions. The trace shows you those decisions.
 
-If you do not see enough tool detail in your trace, add temporary terminal logging with `getItemsStream()` or `getToolStream()` while you debug locally. Broadcast gives you the production trace; local stream consumers can give you extra CLI feedback.
+If you do not see enough tool detail in your trace, you can add temporary terminal logging with `getItemsStream()` or `getToolStream()` while you debug locally. Broadcast gives you the production trace; local stream consumers can give you extra CLI feedback.
 
 For example:
 
@@ -425,11 +422,40 @@ Use a 1-5 score for each dimension:
 | Actionability | Does the user know what changed, why it matters, and what to follow up on? |
 | Cost discipline | Did the run use a reasonable number of tool calls and tokens? |
 
+In Langfuse, each of these dimensions should be a **Score**. For this tutorial, the simplest path is manual scoring:
+
+1. Open your Langfuse project settings.
+2. Go to **Score Configs**.
+3. Create one numeric score config for each dimension: `digest_relevance`, `digest_factual_grounding`, `digest_selectivity`, `digest_actionability`, and `digest_cost_discipline`.
+4. Set each score config to numeric with a minimum of `1` and a maximum of `5`.
+
+Score configs standardize the scoring schema for future analysis. They are also effectively schema objects, so treat the names and ranges as deliberate choices instead of throwaway labels.
+
+After you create the five configs, your Score Configs table should include the digest rubric dimensions.
+
+![Langfuse score configs list for the digest rubric](langfuse-score-configs-list.png)
+
+Now score a real trace:
+
+1. Open a Capitol Tracker digest trace.
+2. Click **Annotate**.
+3. Use the **Select** control to add the five digest score configs.
+4. Enter the 1-5 values from the rubric below.
+5. Wait until Langfuse shows **Score data saved**.
+6. Add a short comment when a score needs explanation, especially for low scores.
+7. Open the trace's **Scores** tab, or refresh the trace list, to confirm the annotation scores were saved.
+
+In the trace list, annotation scores appear as score columns and score badges on the selected trace. In the trace detail view, they appear in the **Scores** tab with source `ANNOTATION`. If the Scores tab looks empty immediately after scoring, refresh the page; the trace badges often appear before the detail table catches up.
+
+This gives you structured data you can compare across runs instead of notes scattered in your head. Once the manual rubric feels right, you can automate some of it with Langfuse LLM-as-a-Judge evaluators.
+
+Do the manual pass first. A good companion resource is [Hamel Husain's eval-skills repo](https://github.com/hamelsmu/evals-skills), especially the emphasis on error analysis, clear judge prompts, and validating automated evaluators against human labels. The practical version here is: score 10-20 traces yourself, look for recurring failure modes, and only then convert the stable parts of the rubric into automated checks.
+
 For each digest trace in Langfuse, read the prompt, tool results, and final output. Then score it.
 
 A good digest is not just fluent. A good digest is selective, grounded, and useful.
 
-Here is the rubric I would use:
+Here is a rubric you could use:
 
 ```text
 Score each digest from 1-5 on these dimensions:
