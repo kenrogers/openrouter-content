@@ -85,38 +85,67 @@ input_references: [
 
 ## Step 4: Poll and download
 
-Use the `polling_url` returned by the submit request until the job is `completed`:
+In a real app, run this from a server route, worker, or job runner instead of the browser. This minimal helper keeps the foundational flow explicit: poll with a limit, stop on failure, then download the completed video.
 
-```bash
-POLLING_URL="https://openrouter.ai/api/v1/videos/{jobId}"
+```ts
+type VideoJob = {
+  id: string;
+  polling_url: string;
+  status: string;
+  unsigned_urls?: string[];
+  error?: string;
+};
 
-while true; do
-  JOB_JSON=$(curl -s "$POLLING_URL" \
-    -H "Authorization: Bearer $OPENROUTER_API_KEY")
+async function waitForVideo(job: VideoJob) {
+  let current = job;
 
-  STATUS=$(printf '%s' "$JOB_JSON" | node -e 'let body=""; process.stdin.on("data", d => body += d); process.stdin.on("end", () => console.log(JSON.parse(body).status));')
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
+    if (current.status === "completed") {
+      return current;
+    }
 
-  echo "Status: $STATUS"
+    if (current.status === "failed") {
+      throw new Error(current.error ?? "Video generation failed.");
+    }
 
-  if [ "$STATUS" = "completed" ]; then
-    break
-  fi
+    await new Promise((resolve) => setTimeout(resolve, 30_000));
 
-  if [ "$STATUS" = "failed" ]; then
-    echo "$JOB_JSON"
-    exit 1
-  fi
+    const response = await fetch(current.polling_url, {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      },
+    });
 
-  sleep 30
-done
-```
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
 
-Then download the content:
+    current = await response.json();
+  }
 
-```bash
-curl "https://openrouter.ai/api/v1/videos/{jobId}/content?index=0" \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-  --output reference-video.mp4
+  throw new Error("Video generation did not complete after 60 attempts.");
+}
+
+async function downloadVideo(job: Pick<VideoJob, "id" | "unsigned_urls">) {
+  const videoUrl =
+    job.unsigned_urls?.[0] ??
+    `https://openrouter.ai/api/v1/videos/${job.id}/content?index=0`;
+
+  const response = await fetch(videoUrl, {
+    headers: videoUrl.startsWith("https://openrouter.ai/api/")
+      ? { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` }
+      : undefined,
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return Buffer.from(await response.arrayBuffer());
+}
+
+const completedJob = await waitForVideo(job);
+const videoBuffer = await downloadVideo(completedJob);
 ```
 
 ## Check your work
